@@ -20,18 +20,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Create participants container
+        const participantsDiv = document.createElement("div");
+        participantsDiv.className = "participants";
+        const participantsTitle = document.createElement("h5");
+        participantsTitle.textContent = "Participants";
+        participantsDiv.appendChild(participantsTitle);
+
+        const participantsList = document.createElement("div");
+        participantsList.className = "participants-list";
+
+        details.participants.forEach(participant => {
+          const participantItem = document.createElement("span");
+          participantItem.className = "participant-item";
+          participantItem.textContent = participant;
+
+          // Add delete icon
+          const deleteIcon = document.createElement("span");
+          deleteIcon.className = "delete-icon";
+          deleteIcon.title = "Remove participant";
+          deleteIcon.innerHTML = "&#128465;"; // Unicode trash can
+          deleteIcon.onclick = async () => {
+            if (confirm(`Remove ${participant} from ${name}?`)) {
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(name)}/unregister?email=${encodeURIComponent(participant)}`, {
+                  method: "POST"
+                });
+                const result = await response.json();
+                if (response.ok) {
+                  fetchActivities();
+                } else {
+                  alert(result.detail || "Failed to remove participant.");
+                }
+              } catch (error) {
+                alert("Error removing participant.");
+              }
+            }
+          };
+
+          participantItem.appendChild(deleteIcon);
+          participantsList.appendChild(participantItem);
+        });
+
+        participantsDiv.appendChild(participantsList);
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-          <div class="participants">
-            <h5>Participants</h5>
-            <ul>
-              ${details.participants.map(participant => `<li>${participant}</li>`).join('')}
-            </ul>
-          </div>
         `;
+        activityCard.appendChild(participantsDiv);
 
         activitiesList.appendChild(activityCard);
 
@@ -68,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities list
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
